@@ -1,7 +1,14 @@
-local Config = {
-    AutoClickEnabled = false,  -- Включить/выключить автоклик (правая кнопка мыши)
-    LeftClickEnabled = false,  -- Включить/выключить одиночный выстрел (левая кнопка мыши)
-    LockCameraEnabled = false  -- Включить/выключить блокировку камеры на голове игрока
+local config = {
+    AutoClickEnabled = false, -- Включить/выключить автоклик (правая кнопка мыши)
+    LeftClickEnabled = false, -- Включить/выключить одиночный выстрел (левая кнопка мыши)
+    LockCameraEnabled = false, -- Включить/выключить блокировку камеры на голове игрока
+
+    FOVRadius = 100, -- Радиус FOV круга
+    FOVColor = Color3.fromRGB(255, 255, 255), -- Цвет круга
+    FOVTransparency = 1, -- Прозрачность круга
+    FOVVisible = true, -- Видимость круга
+    FOVThickness = 2, -- Толщина круга
+    FOVSides = 64 -- Количество сторон у круга
 }
 
 local Players = game:GetService("Players")
@@ -15,8 +22,17 @@ local isLeftMouseDown = false
 local isRightMouseDown = false
 local autoClickConnection = nil
 
+-- Создаем круг FOV
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Color = config.FOVColor
+FOVCircle.Radius = config.FOVRadius
+FOVCircle.Thickness = config.FOVThickness
+FOVCircle.NumSides = config.FOVSides
+FOVCircle.Filled = false
+FOVCircle.Transparency = config.FOVTransparency
+FOVCircle.Visible = config.FOVVisible
+
 local function isLobbyVisible()
-    -- Убедитесь, что объект Lobby существует, прежде чем проверять его видимость
     local lobby = localPlayer.PlayerGui:FindFirstChild("MainGui")
     if lobby then
         local mainFrame = lobby:FindFirstChild("MainFrame")
@@ -28,9 +44,9 @@ local function isLobbyVisible()
     return false
 end
 
-local function getClosestPlayerToMouse()
+local function getClosestPlayerToFOV()
     local closestPlayer = nil
-    local shortestDistance = math.huge
+    local shortestDistance = config.FOVRadius
     local mousePosition = UserInputService:GetMouseLocation()
 
     for _, player in ipairs(Players:GetPlayers()) do
@@ -42,7 +58,7 @@ local function getClosestPlayerToMouse()
                 local screenPosition = Vector2.new(headPosition.X, headPosition.Y)
                 local distance = (screenPosition - mousePosition).Magnitude
 
-                if distance < shortestDistance then
+                if distance <= config.FOVRadius and distance < shortestDistance then
                     closestPlayer = player
                     shortestDistance = distance
                 end
@@ -65,39 +81,35 @@ local function lockCameraToHead()
 end
 
 local function startAutoClick()
-    -- Подключаем автокликер, если правая кнопка зажата
     if autoClickConnection then
         autoClickConnection:Disconnect()
     end
     autoClickConnection = RunService.Heartbeat:Connect(function()
-        if isRightMouseDown and Config.AutoClickEnabled then
+        if isRightMouseDown and config.AutoClickEnabled then
             if not isLobbyVisible() then
-                mouse1click() -- Выполнение автоклика
+                mouse1click()
             end
         end
     end)
 end
 
 local function stopAutoClick()
-    -- Останавливаем автокликер
     if autoClickConnection then
         autoClickConnection:Disconnect()
     end
 end
 
 UserInputService.InputBegan:Connect(function(input, isProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and Config.LeftClickEnabled then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and config.LeftClickEnabled then
         if not isLeftMouseDown then
             isLeftMouseDown = true
-            -- Одиночный выстрел
             if not isLobbyVisible() then
                 mouse1click()
             end
         end
-    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and Config.AutoClickEnabled then
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and config.AutoClickEnabled then
         if not isRightMouseDown then
             isRightMouseDown = true
-            -- Запуск автокликера, если правая кнопка мыши нажата
             startAutoClick()
         end
     end
@@ -108,18 +120,23 @@ UserInputService.InputEnded:Connect(function(input, isProcessed)
         isLeftMouseDown = false
     elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed then
         isRightMouseDown = false
-        -- Остановить автокликер, если правая кнопка отпущена
         stopAutoClick()
     end
 end)
 
 RunService.Heartbeat:Connect(function()
     if not isLobbyVisible() then
-        targetPlayer = getClosestPlayerToMouse()
-        if targetPlayer and Config.LockCameraEnabled then
+        -- Обновление положения круга
+        FOVCircle.Position = UserInputService:GetMouseLocation()
+
+        -- Получение ближайшего игрока в пределах FOV
+        targetPlayer = getClosestPlayerToFOV()
+
+        -- Блокировка камеры
+        if targetPlayer and config.LockCameraEnabled then
             lockCameraToHead()
         end
     end
 end)
 
-return Config
+return config
