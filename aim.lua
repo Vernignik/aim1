@@ -108,12 +108,23 @@ local function updateConfig()
     FOVCircle.NumSides = config.FOVSides
 end
 
--- Отслеживание изменений в конфигурации
+-- Функция для отслеживания изменений в конфигурации
 local function watchConfigChanges()
-    local previousConfig = config
+    local previousConfig = table.clone(config) -- создаем копию конфигурации
     while true do
-        if previousConfig ~= config then
-            previousConfig = config
+        -- Если конфигурация изменилась
+        if previousConfig.AutoClickEnabled ~= config.AutoClickEnabled or 
+           previousConfig.LeftClickEnabled ~= config.LeftClickEnabled or 
+           previousConfig.LockCameraEnabled ~= config.LockCameraEnabled or 
+           previousConfig.FOVRadius ~= config.FOVRadius or
+           previousConfig.FOVColor ~= config.FOVColor or
+           previousConfig.FOVTransparency ~= config.FOVTransparency or
+           previousConfig.FOVVisible ~= config.FOVVisible or
+           previousConfig.FOVThickness ~= config.FOVThickness or
+           previousConfig.FOVSides ~= config.FOVSides then
+
+            -- Обновляем конфигурацию
+            previousConfig = table.clone(config)
             updateConfig()
         end
         wait(0.1)
