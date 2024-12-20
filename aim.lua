@@ -1,13 +1,13 @@
-local Aim = {
-    AutoClickEnabled = false,
-    LeftClickEnabled = false,
-    LockCameraEnabled = false,
+local Config = {
     FOVRadius = 100,
     FOVColor = Color3.fromRGB(255, 255, 255),
     FOVTransparency = 1,
     FOVVisible = true,
     FOVThickness = 2,
-    FOVSides = 64
+    FOVSides = 64,
+    AutoClickEnabled = false,
+    LeftClickEnabled = false,
+    LockCameraEnabled = false
 }
 
 local Players = game:GetService("Players")
@@ -23,9 +23,6 @@ local autoClickConnection = nil
 
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Filled = false
-
--- Сохраняем старые значения для отслеживания изменений
-local oldValues = {}
 
 -- Функция для обновления FOVCircle
 local function updateFOVCircle(property, value)
@@ -46,8 +43,7 @@ end
 
 -- Функция для обновления всех значений в FOVCircle
 local function applyAllSettings()
-    for key, value in pairs(Aim) do
-        oldValues[key] = value
+    for key, value in pairs(Config) do
         updateFOVCircle(key, value)
     end
 end
@@ -56,10 +52,9 @@ end
 applyAllSettings()
 
 -- Цикл для отслеживания изменений в конфиге
-game:GetService("RunService").RenderStepped:Connect(function()
-    for key, value in pairs(Aim) do
-        if oldValues[key] ~= value then
-            oldValues[key] = value
+RunService.RenderStepped:Connect(function()
+    for key, value in pairs(Config) do
+        if FOVCircle[key] ~= value then
             updateFOVCircle(key, value)
         end
     end
@@ -81,7 +76,7 @@ end
 -- Функция для получения ближайшего игрока в пределах FOV
 local function getClosestPlayerToFOV()
     local closestPlayer = nil
-    local shortestDistance = Aim.FOVRadius
+    local shortestDistance = Config.FOVRadius
     local mousePosition = UserInputService:GetMouseLocation()
 
     for _, player in ipairs(Players:GetPlayers()) do
@@ -93,7 +88,7 @@ local function getClosestPlayerToFOV()
                 local screenPosition = Vector2.new(headPosition.X, headPosition.Y)
                 local distance = (screenPosition - mousePosition).Magnitude
 
-                if distance <= Aim.FOVRadius and distance < shortestDistance then
+                if distance <= Config.FOVRadius and distance < shortestDistance then
                     closestPlayer = player
                     shortestDistance = distance
                 end
@@ -110,7 +105,7 @@ local function startAutoClick()
         autoClickConnection:Disconnect()
     end
     autoClickConnection = RunService.Heartbeat:Connect(function()
-        if isRightMouseDown and Aim.AutoClickEnabled then
+        if isRightMouseDown and Config.AutoClickEnabled then
             if not isLobbyVisible() then
                 mouse1click()
             end
@@ -126,14 +121,14 @@ end
 
 -- Обработка ввода
 UserInputService.InputBegan:Connect(function(input, isProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and Aim.LeftClickEnabled then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and Config.LeftClickEnabled then
         if not isLeftMouseDown then
             isLeftMouseDown = true
             if not isLobbyVisible() then
                 mouse1click()
             end
         end
-    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and Aim.AutoClickEnabled then
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and Config.AutoClickEnabled then
         if not isRightMouseDown then
             isRightMouseDown = true
             startAutoClick()
@@ -160,7 +155,7 @@ RunService.Heartbeat:Connect(function()
         targetPlayer = getClosestPlayerToFOV()
 
         -- Блокировка камеры
-        if targetPlayer and Aim.LockCameraEnabled then
+        if targetPlayer and Config.LockCameraEnabled then
             if targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
                 local head = targetPlayer.Character.Head
                 local headPosition = camera:WorldToViewportPoint(head.Position)
@@ -173,4 +168,4 @@ RunService.Heartbeat:Connect(function()
     end
 end)
 
-return Aim
+return Config
