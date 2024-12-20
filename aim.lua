@@ -7,7 +7,7 @@ local config = {
     FOVTransparency = 1, -- Прозрачность круга
     FOVVisible = true, -- Видимость круга
     FOVThickness = 2, -- Толщина круга
-    FOVSides = 64 -- Количество сторон у круга
+    FOVSides = 64, -- Количество сторон у круга
 }
 
 local Players = game:GetService("Players")
@@ -98,42 +98,6 @@ local function stopAutoClick()
     end
 end
 
--- Функция для проверки изменений конфигурации
-local function updateConfig()
-    FOVCircle.Radius = config.FOVRadius
-    FOVCircle.Color = config.FOVColor
-    FOVCircle.Transparency = config.FOVTransparency
-    FOVCircle.Visible = config.FOVVisible
-    FOVCircle.Thickness = config.FOVThickness
-    FOVCircle.NumSides = config.FOVSides
-end
-
--- Функция для отслеживания изменений в конфигурации
-local function watchConfigChanges()
-    local previousConfig = table.clone(config) -- создаем копию конфигурации
-    while true do
-        -- Если конфигурация изменилась
-        if previousConfig.AutoClickEnabled ~= config.AutoClickEnabled or 
-           previousConfig.LeftClickEnabled ~= config.LeftClickEnabled or 
-           previousConfig.LockCameraEnabled ~= config.LockCameraEnabled or 
-           previousConfig.FOVRadius ~= config.FOVRadius or
-           previousConfig.FOVColor ~= config.FOVColor or
-           previousConfig.FOVTransparency ~= config.FOVTransparency or
-           previousConfig.FOVVisible ~= config.FOVVisible or
-           previousConfig.FOVThickness ~= config.FOVThickness or
-           previousConfig.FOVSides ~= config.FOVSides then
-
-            -- Обновляем конфигурацию
-            previousConfig = table.clone(config)
-            updateConfig()
-        end
-        wait(0.1)
-    end
-end
-
--- Запуск отслеживания изменений конфигурации
-spawn(watchConfigChanges)
-
 UserInputService.InputBegan:Connect(function(input, isProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and config.LeftClickEnabled then
         if not isLeftMouseDown then
@@ -173,5 +137,22 @@ RunService.Heartbeat:Connect(function()
         end
     end
 end)
+
+-- Функция для обновления конфигов (например, через UI или команду)
+function updateConfig(newConfig)
+    for key, value in pairs(newConfig) do
+        if config[key] ~= nil then
+            config[key] = value
+        end
+    end
+    -- Обновление отображения FOV с новыми параметрами
+    FOVCircle.Color = config.FOVColor
+    FOVCircle.Radius = config.FOVRadius
+    FOVCircle.Thickness = config.FOVThickness
+    FOVCircle.NumSides = config.FOVSides
+    FOVCircle.Filled = false
+    FOVCircle.Transparency = config.FOVTransparency
+    FOVCircle.Visible = config.FOVVisible
+end
 
 return config
