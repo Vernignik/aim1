@@ -1,63 +1,125 @@
 local Config = {
-    teamCheck = false,
-    fov = 150,
-    smoothing = 1,
-    FOVColor = Color3.fromRGB(255, 128, 128),
-    FOVTransparency = 1,
-    FOVThickness = 1.5
+    AutoClickEnabled = false,  -- Включить/выключить автоклик (правая кнопка мыши)
+    LeftClickEnabled = false,  -- Включить/выключить одиночный выстрел (левая кнопка мыши)
+    LockCameraEnabled = false  -- Включить/выключить блокировку камеры на голове игрока
 }
 
+local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local localPlayer = Players.LocalPlayer
+local camera = workspace.CurrentCamera
 
-local FOVring = Drawing.new("Circle")
-FOVring.Visible = true
-FOVring.Thickness = Config.FOVThickness
-FOVring.Radius = Config.fov
-FOVring.Transparency = Config.FOVTransparency
-FOVring.Color = Config.FOVColor
-FOVring.Position = workspace.CurrentCamera.ViewportSize/2
+local targetPlayer = nil
+local isLeftMouseDown = false
+local isRightMouseDown = false
+local autoClickConnection = nil
 
-local function getClosest(cframe)
-   local ray = Ray.new(cframe.Position, cframe.LookVector).Unit
-   
-   local target = nil
-   local mag = math.huge
-   
-   for i,v in pairs(game.Players:GetPlayers()) do
-       if v.Character and v.Character:FindFirstChild("Head") and v.Character:FindFirstChild("Humanoid") and v.Character:FindFirstChild("HumanoidRootPart") and v ~= game.Players.LocalPlayer and (v.Team ~= game.Players.LocalPlayer.Team or not Config.teamCheck) then
-           local magBuf = (v.Character.Head.Position - ray:ClosestPoint(v.Character.Head.Position)).Magnitude
-           
-           if magBuf < mag then
-               mag = magBuf
-               target = v
-           end
-       end
-   end
-   
-   return target
+local function isLobbyVisible()
+    -- Убедитесь, что объект Lobby существует, прежде чем проверять его видимость
+    local lobby = localPlayer.PlayerGui:FindFirstChild("MainGui")
+    if lobby then
+        local mainFrame = lobby:FindFirstChild("MainFrame")
+        if mainFrame then
+            local currency = mainFrame:FindFirstChild("Lobby") and mainFrame.Lobby:FindFirstChild("Currency")
+            return currency and currency.Visible or false
+        end
+    end
+    return false
 end
 
-local loop = RunService.RenderStepped:Connect(function()
-   local pressed = UserInputService:IsMouseButtonPressed(Enum.UserInputType.MouseButton2)
-   local localPlay = game.Players.LocalPlayer.Character
-   local cam = workspace.CurrentCamera
-   local zz = workspace.CurrentCamera.ViewportSize/2
-   
-   if pressed then
-       local Line = Drawing.new("Line")
-       local curTar = getClosest(cam.CFrame)
-       local ssHeadPoint = cam:WorldToScreenPoint(curTar.Character.Head.Position)
-       ssHeadPoint = Vector2.new(ssHeadPoint.X, ssHeadPoint.Y)
-       if (ssHeadPoint - zz).Magnitude < Config.fov then
-           workspace.CurrentCamera.CFrame = workspace.CurrentCamera.CFrame:Lerp(CFrame.new(cam.CFrame.Position, curTar.Character.Head.Position), Config.smoothing)
-       end
-   end
-   
-   if UserInputService:IsKeyDown(Enum.KeyCode.Delete) then
-       loop:Disconnect()
-       FOVring:Remove()
-   end
+local function getClosestPlayerToMouse()
+    local closestPlayer = nil
+    local shortestDistance = math.huge
+    local mousePosition = UserInputService:GetMouseLocation()
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
+            local head = player.Character.Head
+            local headPosition, onScreen = camera:WorldToViewportPoint(head.Position)
+
+            if onScreen then
+                local screenPosition = Vector2.new(headPosition.X, headPosition.Y)
+                local distance = (screenPosition - mousePosition).Magnitude
+
+                if distance < shortestDistance then
+                    closestPlayer = player
+                    shortestDistance = distance
+                end
+            end
+        end
+    end
+
+    return closestPlayer
+end
+
+local function lockCameraToHead()
+    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+        local head = targetPlayer.Character.Head
+        local headPosition = camera:WorldToViewportPoint(head.Position)
+        if headPosition.Z > 0 then
+            local cameraPosition = camera.CFrame.Position
+            camera.CFrame = CFrame.new(cameraPosition, head.Position)
+        end
+    end
+end
+
+local function startAutoClick()
+    -- Подключаем автокликер, если правая кнопка зажата
+    if autoClickConnection then
+        autoClickConnection:Disconnect()
+    end
+    autoClickConnection = RunService.Heartbeat:Connect(function()
+        if isRightMouseDown and Config.AutoClickEnabled then
+            if not isLobbyVisible() then
+                mouse1click() -- Выполнение автоклика
+            end
+        end
+    end)
+end
+
+local function stopAutoClick()
+    -- Останавливаем автокликер
+    if autoClickConnection then
+        autoClickConnection:Disconnect()
+    end
+end
+
+UserInputService.InputBegan:Connect(function(input, isProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and Config.LeftClickEnabled then
+        if not isLeftMouseDown then
+            isLeftMouseDown = true
+            -- Одиночный выстрел
+            if not isLobbyVisible() then
+                mouse1click()
+            end
+        end
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and Config.AutoClickEnabled then
+        if not isRightMouseDown then
+            isRightMouseDown = true
+            -- Запуск автокликера, если правая кнопка мыши нажата
+            startAutoClick()
+        end
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input, isProcessed)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed then
+        isLeftMouseDown = false
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed then
+        isRightMouseDown = false
+        -- Остановить автокликер, если правая кнопка отпущена
+        stopAutoClick()
+    end
+end)
+
+RunService.Heartbeat:Connect(function()
+    if not isLobbyVisible() then
+        targetPlayer = getClosestPlayerToMouse()
+        if targetPlayer and Config.LockCameraEnabled then
+            lockCameraToHead()
+        end
+    end
 end)
 
 return Config
