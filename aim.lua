@@ -1,13 +1,14 @@
+-- Конфигурация
 local config = {
-    AutoClickEnabled = false, -- Включить/выключить автоклик (правая кнопка мыши)
-    LeftClickEnabled = false, -- Включить/выключить одиночный выстрел (левая кнопка мыши)
-    LockCameraEnabled = false, -- Включить/выключить блокировку камеры на голове игрока
-    FOVRadius = 100, -- Радиус FOV круга
-    FOVColor = Color3.fromRGB(255, 255, 255), -- Цвет круга
-    FOVTransparency = 1, -- Прозрачность круга
-    FOVVisible = true, -- Видимость круга
-    FOVThickness = 2, -- Толщина круга
-    FOVSides = 64, -- Количество сторон у круга
+    AutoClickEnabled = false,  -- Включить автоклик (правая кнопка)
+    LeftClickEnabled = false,  -- Включить одиночный выстрел (левая кнопка)
+    LockCameraEnabled = false, -- Включить блокировку камеры на голове игрока
+    FOVRadius = 100,           -- Радиус круга FOV
+    FOVColor = Color3.fromRGB(255, 255, 255), -- Цвет круга FOV
+    FOVTransparency = 1,       -- Прозрачность FOV
+    FOVVisible = true,         -- Видимость круга FOV
+    FOVThickness = 2,          -- Толщина круга FOV
+    FOVSides = 64              -- Количество сторон у круга FOV
 }
 
 local Players = game:GetService("Players")
@@ -16,12 +17,13 @@ local UserInputService = game:GetService("UserInputService")
 local localPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
+-- Переменные состояния
 local targetPlayer = nil
 local isLeftMouseDown = false
 local isRightMouseDown = false
 local autoClickConnection = nil
 
--- Создаем круг FOV
+-- Создание круга для FOV
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Color = config.FOVColor
 FOVCircle.Radius = config.FOVRadius
@@ -31,6 +33,7 @@ FOVCircle.Filled = false
 FOVCircle.Transparency = config.FOVTransparency
 FOVCircle.Visible = config.FOVVisible
 
+-- Проверка, виден ли лобби
 local function isLobbyVisible()
     local lobby = localPlayer.PlayerGui:FindFirstChild("MainGui")
     if lobby then
@@ -43,6 +46,7 @@ local function isLobbyVisible()
     return false
 end
 
+-- Получить ближайшего игрока для FOV
 local function getClosestPlayerToFOV()
     local closestPlayer = nil
     local shortestDistance = config.FOVRadius
@@ -68,6 +72,7 @@ local function getClosestPlayerToFOV()
     return closestPlayer
 end
 
+-- Блокировка камеры на голове игрока
 local function lockCameraToHead()
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
         local head = targetPlayer.Character.Head
@@ -79,6 +84,7 @@ local function lockCameraToHead()
     end
 end
 
+-- Запуск автоклика
 local function startAutoClick()
     if autoClickConnection then
         autoClickConnection:Disconnect()
@@ -92,12 +98,14 @@ local function startAutoClick()
     end)
 end
 
+-- Остановка автоклика
 local function stopAutoClick()
     if autoClickConnection then
         autoClickConnection:Disconnect()
     end
 end
 
+-- Обработчики ввода
 UserInputService.InputBegan:Connect(function(input, isProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and config.LeftClickEnabled then
         if not isLeftMouseDown then
@@ -123,29 +131,24 @@ UserInputService.InputEnded:Connect(function(input, isProcessed)
     end
 end)
 
+-- Обновление круга FOV и блокировки камеры
 RunService.Heartbeat:Connect(function()
     if not isLobbyVisible() then
-        -- Обновление положения круга
         FOVCircle.Position = UserInputService:GetMouseLocation()
-
-        -- Получение ближайшего игрока в пределах FOV
         targetPlayer = getClosestPlayerToFOV()
-
-        -- Блокировка камеры
         if targetPlayer and config.LockCameraEnabled then
             lockCameraToHead()
         end
     end
 end)
 
--- Функция для обновления конфигов (например, через UI или команду)
+-- Функция обновления конфигов
 function updateConfig(newConfig)
     for key, value in pairs(newConfig) do
         if config[key] ~= nil then
             config[key] = value
         end
     end
-    -- Обновление отображения FOV с новыми параметрами
     FOVCircle.Color = config.FOVColor
     FOVCircle.Radius = config.FOVRadius
     FOVCircle.Thickness = config.FOVThickness
@@ -154,42 +157,6 @@ function updateConfig(newConfig)
     FOVCircle.Transparency = config.FOVTransparency
     FOVCircle.Visible = config.FOVVisible
 end
-
--- Добавим переключатель FOV и выбор цвета в интерфейс
-local Tabs = Fluent:CreateWindow({
-    Title = "Rivals┃rewardehub ",
-    SubTitle = "1.0.0",
-    TabWidth = 160,
-    Size = UDim2.fromOffset(580, 460),
-    Acrylic = true,
-    Theme = "Dark",  -- Тема по умолчанию
-    MinimizeKey = Enum.KeyCode.LeftControl
-})
-
-local ESPTab = Tabs:AddTab({
-    Title = "ESP",
-    Icon = "eye"
-})
-
-local FOVToggle = ESPTab:AddToggle("FOVVisible", {
-    Title = "Включить FOV",
-    Default = config.FOVVisible
-})
-
-FOVToggle:OnChanged(function()
-    config.FOVVisible = FOVToggle.Value
-    FOVCircle.Visible = config.FOVVisible
-end)
-
-local FOVColorPicker = ESPTab:AddColorpicker("FOVColor", {
-    Title = "Цвет FOV",
-    Default = config.FOVColor
-})
-
-FOVColorPicker:OnChanged(function()
-    config.FOVColor = FOVColorPicker.Value
-    FOVCircle.Color = config.FOVColor
-end)
 
 return {
     updateConfig = updateConfig,
