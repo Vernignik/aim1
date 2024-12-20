@@ -2,7 +2,6 @@ local config = {
     AutoClickEnabled = false, -- Включить/выключить автоклик (правая кнопка мыши)
     LeftClickEnabled = false, -- Включить/выключить одиночный выстрел (левая кнопка мыши)
     LockCameraEnabled = false, -- Включить/выключить блокировку камеры на голове игрока
-
     FOVRadius = 100, -- Радиус FOV круга
     FOVColor = Color3.fromRGB(255, 255, 255), -- Цвет круга
     FOVTransparency = 1, -- Прозрачность круга
