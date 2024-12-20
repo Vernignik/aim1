@@ -155,4 +155,7 @@ function updateConfig(newConfig)
     FOVCircle.Visible = config.FOVVisible
 end
 
-return config
+return {
+    updateConfig = updateConfig,
+    config = config
+}
