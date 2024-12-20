@@ -1,15 +1,55 @@
-local config = {
-    AutoClickEnabled = false, -- Включить/выключить автоклик (правая кнопка мыши)
-    LeftClickEnabled = false, -- Включить/выключить одиночный выстрел (левая кнопка мыши)
-    LockCameraEnabled = false, -- Включить/выключить блокировку камеры на голове игрока
-    FOVRadius = 100, -- Радиус FOV круга
-    FOVColor = Color3.fromRGB(255, 255, 255), -- Цвет круга
-    FOVTransparency = 1, -- Прозрачность круга
-    FOVVisible = true, -- Видимость круга
-    FOVThickness = 2, -- Толщина круга
-    FOVSides = 64 -- Количество сторон у круга
+local Aim = {
+    AutoClickEnabled = false,
+    LeftClickEnabled = false,
+    LockCameraEnabled = false,
+    FOVRadius = 100,
+    FOVColor = Color3.fromRGB(255, 255, 255),
+    FOVTransparency = 1,
+    FOVVisible = true,
+    FOVThickness = 2,
+    FOVSides = 64
 }
 
+local FOVCircle = Drawing.new("Circle")
+FOVCircle.Filled = false
+
+-- Сохраняем предыдущие значения для отслеживания изменений
+local oldValues = {}
+
+-- Функция для обновления FOVCircle
+local function updateFOVCircle(property, value)
+    if property == "FOVRadius" then
+        FOVCircle.Radius = value
+    elseif property == "FOVColor" then
+        FOVCircle.Color = value
+    elseif property == "FOVTransparency" then
+        FOVCircle.Transparency = value
+    elseif property == "FOVVisible" then
+        FOVCircle.Visible = value
+    elseif property == "FOVThickness" then
+        FOVCircle.Thickness = value
+    elseif property == "FOVSides" then
+        FOVCircle.NumSides = value
+    end
+end
+
+-- Инициализация FOVCircle с начальными значениями
+for key, value in pairs(Aim) do
+    oldValues[key] = value
+    updateFOVCircle(key, value)
+end
+
+-- Цикл для проверки изменений
+game:GetService("RunService").RenderStepped:Connect(function()
+    for key, value in pairs(Aim) do
+        if oldValues[key] ~= value then
+            oldValues[key] = value
+            updateFOVCircle(key, value)
+        end
+    end
+end)
+
+-- Дополнительные функции (например, работа камеры, автоклик, и т. д.)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -17,35 +57,10 @@ local localPlayer = Players.LocalPlayer
 local camera = workspace.CurrentCamera
 
 local targetPlayer = nil
-local isLeftMouseDown = false
-local isRightMouseDown = false
-local autoClickConnection = nil
-
--- Создаем круг FOV
-local FOVCircle = Drawing.new("Circle")
-FOVCircle.Color = config.FOVColor
-FOVCircle.Radius = config.FOVRadius
-FOVCircle.Thickness = config.FOVThickness
-FOVCircle.NumSides = config.FOVSides
-FOVCircle.Filled = false
-FOVCircle.Transparency = config.FOVTransparency
-FOVCircle.Visible = config.FOVVisible
-
-local function isLobbyVisible()
-    local lobby = localPlayer.PlayerGui:FindFirstChild("MainGui")
-    if lobby then
-        local mainFrame = lobby:FindFirstChild("MainFrame")
-        if mainFrame then
-            local currency = mainFrame:FindFirstChild("Lobby") and mainFrame.Lobby:FindFirstChild("Currency")
-            return currency and currency.Visible or false
-        end
-    end
-    return false
-end
 
 local function getClosestPlayerToFOV()
     local closestPlayer = nil
-    local shortestDistance = config.FOVRadius
+    local shortestDistance = Aim.FOVRadius
     local mousePosition = UserInputService:GetMouseLocation()
 
     for _, player in ipairs(Players:GetPlayers()) do
@@ -57,7 +72,7 @@ local function getClosestPlayerToFOV()
                 local screenPosition = Vector2.new(headPosition.X, headPosition.Y)
                 local distance = (screenPosition - mousePosition).Magnitude
 
-                if distance <= config.FOVRadius and distance < shortestDistance then
+                if distance <= Aim.FOVRadius and distance < shortestDistance then
                     closestPlayer = player
                     shortestDistance = distance
                 end
@@ -68,74 +83,12 @@ local function getClosestPlayerToFOV()
     return closestPlayer
 end
 
-local function lockCameraToHead()
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
-        local head = targetPlayer.Character.Head
-        local headPosition = camera:WorldToViewportPoint(head.Position)
-        if headPosition.Z > 0 then
-            local cameraPosition = camera.CFrame.Position
-            camera.CFrame = CFrame.new(cameraPosition, head.Position)
-        end
-    end
-end
-
-local function startAutoClick()
-    if autoClickConnection then
-        autoClickConnection:Disconnect()
-    end
-    autoClickConnection = RunService.Heartbeat:Connect(function()
-        if isRightMouseDown and config.AutoClickEnabled then
-            if not isLobbyVisible() then
-                mouse1click()
-            end
-        end
-    end)
-end
-
-local function stopAutoClick()
-    if autoClickConnection then
-        autoClickConnection:Disconnect()
-    end
-end
-
-UserInputService.InputBegan:Connect(function(input, isProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and config.LeftClickEnabled then
-        if not isLeftMouseDown then
-            isLeftMouseDown = true
-            if not isLobbyVisible() then
-                mouse1click()
-            end
-        end
-    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and config.AutoClickEnabled then
-        if not isRightMouseDown then
-            isRightMouseDown = true
-            startAutoClick()
-        end
-    end
-end)
-
-UserInputService.InputEnded:Connect(function(input, isProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed then
-        isLeftMouseDown = false
-    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed then
-        isRightMouseDown = false
-        stopAutoClick()
-    end
-end)
-
 RunService.Heartbeat:Connect(function()
-    if not isLobbyVisible() then
-        -- Обновление положения круга
-        FOVCircle.Position = UserInputService:GetMouseLocation()
+    -- Обновление положения круга
+    FOVCircle.Position = UserInputService:GetMouseLocation()
 
-        -- Получение ближайшего игрока в пределах FOV
-        targetPlayer = getClosestPlayerToFOV()
-
-        -- Блокировка камеры
-        if targetPlayer and config.LockCameraEnabled then
-            lockCameraToHead()
-        end
-    end
+    -- Получение ближайшего игрока в пределах FOV
+    targetPlayer = getClosestPlayerToFOV()
 end)
 
-return config
+return Aim
