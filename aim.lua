@@ -155,6 +155,42 @@ function updateConfig(newConfig)
     FOVCircle.Visible = config.FOVVisible
 end
 
+-- Добавим переключатель FOV и выбор цвета в интерфейс
+local Tabs = Fluent:CreateWindow({
+    Title = "Rivals┃rewardehub ",
+    SubTitle = "1.0.0",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark",  -- Тема по умолчанию
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+local ESPTab = Tabs:AddTab({
+    Title = "ESP",
+    Icon = "eye"
+})
+
+local FOVToggle = ESPTab:AddToggle("FOVVisible", {
+    Title = "Включить FOV",
+    Default = config.FOVVisible
+})
+
+FOVToggle:OnChanged(function()
+    config.FOVVisible = FOVToggle.Value
+    FOVCircle.Visible = config.FOVVisible
+end)
+
+local FOVColorPicker = ESPTab:AddColorpicker("FOVColor", {
+    Title = "Цвет FOV",
+    Default = config.FOVColor
+})
+
+FOVColorPicker:OnChanged(function()
+    config.FOVColor = FOVColorPicker.Value
+    FOVCircle.Color = config.FOVColor
+end)
+
 return {
     updateConfig = updateConfig,
     config = config
