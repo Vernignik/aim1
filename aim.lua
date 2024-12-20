@@ -5,7 +5,7 @@ local config = {
     FOVRadius = 230, -- Радиус FOV круга
     FOVColor = Color3.fromRGB(0, 0, 255), -- Цвет круга
     FOVTransparency = 1, -- Прозрачность круга
-    FOVVisible = false, -- Видимость круга
+    FOVVisible = true, -- Видимость круга
     FOVThickness = 2, -- Толщина круга
     FOVSides = 64 -- Количество сторон у круга
 }
