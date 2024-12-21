@@ -1,36 +1,36 @@
-local config = {
-    AutoClickEnabled = false, -- Включить/выключить автоклик (правая кнопка мыши)
-    LeftClickEnabled = false, -- Включить/выключить одиночный выстрел (левая кнопка мыши)
-    LockCameraEnabled = false, -- Включить/выключить блокировку камеры на голове игрока
-
-    FOVRadius = 230, -- Радиус FOV круга
-    FOVColor = Color3.fromRGB(0, 0, 255), -- Цвет круга
-    FOVTransparency = 1, -- Прозрачность круга
-    FOVVisible = true, -- Видимость круга
-    FOVThickness = 2, -- Толщина круга
-    FOVSides = 64 -- Количество сторон у круга
-}
-
+local Camera = workspace.CurrentCamera
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
 local localPlayer = Players.LocalPlayer
-local camera = workspace.CurrentCamera
 
 local targetPlayer = nil
 local isLeftMouseDown = false
 local isRightMouseDown = false
 local autoClickConnection = nil
 
--- Создаем круг FOV
+-- Настройки круга FOV
+_G.CircleSides = 64 -- Количество сторон круга FOV.
+_G.CircleColor = Color3.fromRGB(255, 255, 255) -- Цвет круга FOV.
+_G.CircleTransparency = 1 -- Прозрачность круга.
+_G.CircleRadius = 100 -- Радиус круга / FOV.
+_G.CircleFilled = false -- Определяет, будет ли круг заполнен.
+_G.CircleVisible = true -- Определяет, будет ли круг видим.
+_G.CircleThickness = 2 -- Толщина круга.
+
+_G.AutoClickEnabled = false  -- Включить/выключить автоклик (правая кнопка мыши)
+_G.LeftClickEnabled = false  -- Включить/выключить одиночный выстрел (левая кнопка мыши)
+_G.LockCameraEnabled = true  -- Включить/выключить блокировку камеры на голове игрока
+
 local FOVCircle = Drawing.new("Circle")
-FOVCircle.Color = config.FOVColor
-FOVCircle.Radius = config.FOVRadius
-FOVCircle.Thickness = config.FOVThickness
-FOVCircle.NumSides = config.FOVSides
-FOVCircle.Filled = false
-FOVCircle.Transparency = config.FOVTransparency
-FOVCircle.Visible = config.FOVVisible
+FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
+FOVCircle.Radius = _G.CircleRadius
+FOVCircle.Filled = _G.CircleFilled
+FOVCircle.Color = _G.CircleColor
+FOVCircle.Visible = _G.CircleVisible
+FOVCircle.Transparency = _G.CircleTransparency
+FOVCircle.NumSides = _G.CircleSides
+FOVCircle.Thickness = _G.CircleThickness
 
 local function isLobbyVisible()
     local lobby = localPlayer.PlayerGui:FindFirstChild("MainGui")
@@ -44,21 +44,21 @@ local function isLobbyVisible()
     return false
 end
 
-local function getClosestPlayerToFOV()
+local function getClosestPlayerToMouse()
     local closestPlayer = nil
-    local shortestDistance = config.FOVRadius
+    local shortestDistance = math.huge
     local mousePosition = UserInputService:GetMouseLocation()
 
     for _, player in ipairs(Players:GetPlayers()) do
         if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
             local head = player.Character.Head
-            local headPosition, onScreen = camera:WorldToViewportPoint(head.Position)
+            local headPosition, onScreen = Camera:WorldToViewportPoint(head.Position)
 
             if onScreen then
                 local screenPosition = Vector2.new(headPosition.X, headPosition.Y)
                 local distance = (screenPosition - mousePosition).Magnitude
 
-                if distance <= config.FOVRadius and distance < shortestDistance then
+                if distance < shortestDistance then
                     closestPlayer = player
                     shortestDistance = distance
                 end
@@ -72,10 +72,17 @@ end
 local function lockCameraToHead()
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
         local head = targetPlayer.Character.Head
-        local headPosition = camera:WorldToViewportPoint(head.Position)
-        if headPosition.Z > 0 then
-            local cameraPosition = camera.CFrame.Position
-            camera.CFrame = CFrame.new(cameraPosition, head.Position)
+        local headPosition, onScreen = Camera:WorldToViewportPoint(head.Position)
+        
+        -- Проверка, что игрок находится в пределах радиуса FOV
+        local mousePosition = UserInputService:GetMouseLocation()
+        local distanceToMouse = (Vector2.new(headPosition.X, headPosition.Y) - mousePosition).Magnitude
+        
+        if distanceToMouse <= _G.CircleRadius then
+            if headPosition.Z > 0 then
+                local cameraPosition = Camera.CFrame.Position
+                Camera.CFrame = CFrame.new(cameraPosition, head.Position)
+            end
         end
     end
 end
@@ -85,7 +92,7 @@ local function startAutoClick()
         autoClickConnection:Disconnect()
     end
     autoClickConnection = RunService.Heartbeat:Connect(function()
-        if isRightMouseDown and config.AutoClickEnabled then
+        if isRightMouseDown and _G.AutoClickEnabled then
             if not isLobbyVisible() then
                 mouse1click()
             end
@@ -100,14 +107,14 @@ local function stopAutoClick()
 end
 
 UserInputService.InputBegan:Connect(function(input, isProcessed)
-    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and config.LeftClickEnabled then
+    if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and _G.LeftClickEnabled then
         if not isLeftMouseDown then
             isLeftMouseDown = true
             if not isLobbyVisible() then
                 mouse1click()
             end
         end
-    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and config.AutoClickEnabled then
+    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and _G.AutoClickEnabled then
         if not isRightMouseDown then
             isRightMouseDown = true
             startAutoClick()
@@ -126,17 +133,19 @@ end)
 
 RunService.Heartbeat:Connect(function()
     if not isLobbyVisible() then
-        -- Обновление положения круга
-        FOVCircle.Position = UserInputService:GetMouseLocation()
-
-        -- Получение ближайшего игрока в пределах FOV
-        targetPlayer = getClosestPlayerToFOV()
-
-        -- Блокировка камеры
-        if targetPlayer and config.LockCameraEnabled then
+        targetPlayer = getClosestPlayerToMouse()
+        if targetPlayer and _G.LockCameraEnabled then
             lockCameraToHead()
         end
     end
-end)
 
-return config
+    -- Обновление круга FOV
+    FOVCircle.Position = Vector2.new(UserInputService:GetMouseLocation().X, UserInputService:GetMouseLocation().Y)
+    FOVCircle.Radius = _G.CircleRadius
+    FOVCircle.Filled = _G.CircleFilled
+    FOVCircle.Color = _G.CircleColor
+    FOVCircle.Visible = _G.CircleVisible
+    FOVCircle.Transparency = _G.CircleTransparency
+    FOVCircle.NumSides = _G.CircleSides
+    FOVCircle.Thickness = _G.CircleThickness
+end)
