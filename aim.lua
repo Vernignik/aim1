@@ -15,12 +15,12 @@ _G.CircleColor = Color3.fromRGB(255, 255, 255) -- Цвет круга FOV.
 _G.CircleTransparency = 1 -- Прозрачность круга.
 _G.CircleRadius = 100 -- Радиус круга / FOV.
 _G.CircleFilled = false -- Определяет, будет ли круг заполнен.
-_G.CircleVisible = true -- Определяет, будет ли круг видим.
+_G.CircleVisible = false -- Определяет, будет ли круг видим.
 _G.CircleThickness = 2 -- Толщина круга.
 
 _G.AutoClickEnabled = false  -- Включить/выключить автоклик (правая кнопка мыши)
 _G.LeftClickEnabled = false  -- Включить/выключить одиночный выстрел (левая кнопка мыши)
-_G.LockCameraEnabled = true  -- Включить/выключить блокировку камеры на голове игрока
+_G.LockCameraEnabled = false  -- Включить/выключить блокировку камеры на голове игрока
 
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
