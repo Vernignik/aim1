@@ -69,6 +69,15 @@ local function getClosestPlayerToMouse()
     return closestPlayer
 end
 
+local function isPlayerVisible(player)
+    if player and player.Character and player.Character:FindFirstChild("Head") then
+        local head = player.Character.Head
+        local headPosition, onScreen = Camera:WorldToViewportPoint(head.Position)
+        return onScreen and headPosition.Z > 0
+    end
+    return false
+end
+
 local function lockCameraToHead()
     if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
         local head = targetPlayer.Character.Head
@@ -93,7 +102,7 @@ local function startAutoClick()
     end
     autoClickConnection = RunService.Heartbeat:Connect(function()
         if isRightMouseDown and _G.AutoClickEnabled then
-            if not isLobbyVisible() then
+            if not isLobbyVisible() and targetPlayer and isPlayerVisible(targetPlayer) then
                 mouse1click()
             end
         end
