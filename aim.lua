@@ -18,8 +18,8 @@ _G.CircleFilled = false -- Определяет, будет ли круг зап
 _G.CircleVisible = false -- Определяет, будет ли круг видим.
 _G.CircleThickness = 2 -- Толщина круга.
 
-_G.AutoClickEnabled = false  -- Включить/выключить автоклик (правая кнопка мыши)
-_G.LeftClickEnabled = false  -- Включить/выключить одиночный выстрел (левая кнопка мыши)
+_G.AutoClickEnabled = true  -- Включить/выключить автоклик (правая кнопка мыши)
+_G.LeftClickEnabled = true  -- Включить/выключить одиночный выстрел (левая кнопка мыши)
 _G.LockCameraEnabled = false  -- Включить/выключить блокировку камеры на голове игрока
 
 local FOVCircle = Drawing.new("Circle")
