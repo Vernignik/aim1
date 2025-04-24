@@ -10,17 +10,20 @@ local isRightMouseDown = false
 local autoClickConnection = nil
 
 -- Настройки круга FOV
-_G.CircleSides = 64 -- Количество сторон круга FOV.
-_G.CircleColor = Color3.fromRGB(255, 255, 255) -- Цвет круга FOV.
-_G.CircleTransparency = 1 -- Прозрачность круга.
-_G.CircleRadius = 100 -- Радиус круга / FOV.
-_G.CircleFilled = false -- Определяет, будет ли круг заполнен.
-_G.CircleVisible = false -- Определяет, будет ли круг видим.
-_G.CircleThickness = 2 -- Толщина круга.
+_G.CircleSides = 64
+_G.CircleColor = Color3.fromRGB(255, 255, 255)
+_G.CircleTransparency = 1
+_G.CircleRadius = 100
+_G.CircleFilled = false
+_G.CircleVisible = false
+_G.CircleThickness = 2
 
-_G.AutoClickEnabled = true  -- Включить/выключить автоклик (правая кнопка мыши)
-_G.LeftClickEnabled = true  -- Включить/выключить одиночный выстрел (левая кнопка мыши)
-_G.LockCameraEnabled = false  -- Включить/выключить блокировку камеры на голове игрока
+_G.AutoClickEnabled = false
+_G.LeftClickEnabled = false
+_G.LockCameraEnabled = false
+_G.CheckWalls = true -- Новая настройка: проверять стены
+_G.CheckTeam = true -- Новая настройка: проверять команду
+_G.CheckAlive = true -- Новая настройка: проверять жив ли игрок
 
 local FOVCircle = Drawing.new("Circle")
 FOVCircle.Position = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y / 2)
@@ -44,21 +47,65 @@ local function isLobbyVisible()
     return false
 end
 
+local function isPlayerValid(player)
+    -- Проверка что игрок существует и не является локальным игроком
+    if not player or player == localPlayer then return false end
+    
+    -- Проверка что у игрока есть персонаж и голова
+    if not player.Character then return false end
+    local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
+    local head = player.Character:FindFirstChild("Head")
+    if not humanoid or not head then return false end
+    
+    -- Проверка что игрок жив (если включено)
+    if _G.CheckAlive and (humanoid.Health <= 0 or humanoid:GetState() == Enum.HumanoidStateType.Dead) then
+        return false
+    end
+    
+    -- Проверка команды (если включено)
+    if _G.CheckTeam and player.Team == localPlayer.Team then
+        return false
+    end
+    
+    return true
+end
+
+local function isVisible(position)
+    if not _G.CheckWalls then return true end
+    
+    local origin = Camera.CFrame.Position
+    local direction = (position - origin).Unit * 100
+    local raycastParams = RaycastParams.new()
+    raycastParams.FilterDescendantsInstances = {localPlayer.Character}
+    raycastParams.FilterType = Enum.RaycastFilterType.Blacklist
+    
+    local raycastResult = workspace:Raycast(origin, direction, raycastParams)
+    if raycastResult then
+        local hitPart = raycastResult.Instance
+        local hitModel = hitPart:FindFirstAncestorOfClass("Model")
+        if hitModel and hitModel:FindFirstChildOfClass("Humanoid") then
+            return true
+        end
+        return false
+    end
+    return true
+end
+
 local function getClosestPlayerToMouse()
     local closestPlayer = nil
     local shortestDistance = math.huge
     local mousePosition = UserInputService:GetMouseLocation()
 
     for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= localPlayer and player.Character and player.Character:FindFirstChild("Head") then
+        if isPlayerValid(player) then
             local head = player.Character.Head
             local headPosition, onScreen = Camera:WorldToViewportPoint(head.Position)
 
-            if onScreen then
+            if onScreen and isVisible(head.Position) then
                 local screenPosition = Vector2.new(headPosition.X, headPosition.Y)
                 local distance = (screenPosition - mousePosition).Magnitude
 
-                if distance < shortestDistance then
+                if distance < shortestDistance and distance <= _G.CircleRadius then
                     closestPlayer = player
                     shortestDistance = distance
                 end
@@ -70,16 +117,15 @@ local function getClosestPlayerToMouse()
 end
 
 local function lockCameraToHead()
-    if targetPlayer and targetPlayer.Character and targetPlayer.Character:FindFirstChild("Head") then
+    if targetPlayer and isPlayerValid(targetPlayer) then
         local head = targetPlayer.Character.Head
         local headPosition, onScreen = Camera:WorldToViewportPoint(head.Position)
         
-        -- Проверка, что игрок находится в пределах радиуса FOV
-        local mousePosition = UserInputService:GetMouseLocation()
-        local distanceToMouse = (Vector2.new(headPosition.X, headPosition.Y) - mousePosition).Magnitude
-        
-        if distanceToMouse <= _G.CircleRadius then
-            if headPosition.Z > 0 then
+        if onScreen and isVisible(head.Position) then
+            local mousePosition = UserInputService:GetMouseLocation()
+            local distanceToMouse = (Vector2.new(headPosition.X, headPosition.Y) - mousePosition).Magnitude
+            
+            if distanceToMouse <= _G.CircleRadius and headPosition.Z > 0 then
                 local cameraPosition = Camera.CFrame.Position
                 Camera.CFrame = CFrame.new(cameraPosition, head.Position)
             end
@@ -92,9 +138,10 @@ local function startAutoClick()
         autoClickConnection:Disconnect()
     end
     autoClickConnection = RunService.Heartbeat:Connect(function()
-        if isRightMouseDown and _G.AutoClickEnabled then
+        if isRightMouseDown and _G.AutoClickEnabled and targetPlayer and isPlayerValid(targetPlayer) then
             if not isLobbyVisible() then
                 mouse1click()
+                wait(0.1) -- Добавляем задержку между выстрелами
             end
         end
     end)
@@ -103,6 +150,7 @@ end
 local function stopAutoClick()
     if autoClickConnection then
         autoClickConnection:Disconnect()
+        autoClickConnection = nil
     end
 end
 
@@ -110,7 +158,7 @@ UserInputService.InputBegan:Connect(function(input, isProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed and _G.LeftClickEnabled then
         if not isLeftMouseDown then
             isLeftMouseDown = true
-            if not isLobbyVisible() then
+            if not isLobbyVisible() and targetPlayer and isPlayerValid(targetPlayer) then
                 mouse1click()
             end
         end
