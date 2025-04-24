@@ -18,8 +18,8 @@ _G.CircleFilled = false
 _G.CircleVisible = false
 _G.CircleThickness = 2
 
-_G.AutoClickEnabled = false
-_G.LeftClickEnabled = false
+_G.AutoClickEnabled = true
+_G.LeftClickEnabled = true
 _G.LockCameraEnabled = false
 _G.CheckWalls = true -- Новая настройка: проверять стены
 _G.CheckTeam = true -- Новая настройка: проверять команду
