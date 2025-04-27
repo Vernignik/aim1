@@ -7,6 +7,7 @@ local localPlayer = Players.LocalPlayer
 local targetPlayer = nil
 local isLeftMouseDown = false
 local isRightMouseDown = false
+local isZKeyDown = false
 local autoClickConnection = nil
 
 -- Настройки круга FOV
@@ -18,7 +19,7 @@ _G.CircleFilled = false -- Определяет, будет ли круг зап
 _G.CircleVisible = false -- Определяет, будет ли круг видим.
 _G.CircleThickness = 2 -- Толщина круга.
 
-_G.AutoClickEnabled = false  -- Включить/выключить автоклик (правая кнопка мыши)
+_G.AutoClickEnabled = true  -- Включить/выключить автоклик (правая кнопка мыши)
 _G.LeftClickEnabled = false  -- Включить/выключить одиночный выстрел (левая кнопка мыши)
 _G.LockCameraEnabled = false  -- Включить/выключить блокировку камеры на голове игрока
 
@@ -92,7 +93,7 @@ local function startAutoClick()
         autoClickConnection:Disconnect()
     end
     autoClickConnection = RunService.Heartbeat:Connect(function()
-        if isRightMouseDown and _G.AutoClickEnabled then
+        if isZKeyDown and _G.AutoClickEnabled then
             if not isLobbyVisible() then
                 mouse1click()
             end
@@ -103,6 +104,7 @@ end
 local function stopAutoClick()
     if autoClickConnection then
         autoClickConnection:Disconnect()
+        autoClickConnection = nil
     end
 end
 
@@ -114,19 +116,17 @@ UserInputService.InputBegan:Connect(function(input, isProcessed)
                 mouse1click()
             end
         end
-    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed and _G.AutoClickEnabled then
-        if not isRightMouseDown then
-            isRightMouseDown = true
-            startAutoClick()
-        end
+    elseif input.KeyCode == Enum.KeyCode.Z and not isProcessed then
+        isZKeyDown = true
+        startAutoClick()
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input, isProcessed)
     if input.UserInputType == Enum.UserInputType.MouseButton1 and not isProcessed then
         isLeftMouseDown = false
-    elseif input.UserInputType == Enum.UserInputType.MouseButton2 and not isProcessed then
-        isRightMouseDown = false
+    elseif input.KeyCode == Enum.KeyCode.Z and not isProcessed then
+        isZKeyDown = false
         stopAutoClick()
     end
 end)
